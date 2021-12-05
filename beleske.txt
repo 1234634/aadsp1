@@ -23,3 +23,9 @@ Documentation/devices.txt
 
 rotate se moze echovati u ovaj class/graphics/fbcon/rotate
 ili da se odma pre bootovanja dodaje u bootargs = fbcon=rotate:2
+
+
+menuconfig ide na sledeci nacin:
+
+searchujes sta ti treba , i onda kliknes tipa 3 , on te prebaci gde hoces i space kliknes da aktiviras on ti aktivira sve od kojih zavisi.
+dva puta esc te vrati gde si bio.
