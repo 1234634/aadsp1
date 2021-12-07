@@ -106,6 +106,17 @@ mkdir <putanja do rfs-a>/etc/init.d/
 ::sysinit:/etc/init.d/rcS
 ttyAMA0::askfirst:/bin/sh
 ```
+  #### Prebacivanje na deljen biblioteke 
+  
+  -napravis hello word program u c najjobicniji.
+  - prevedes ga : gcc hello.c -o hello
+  - onda hoces da ga izvrsis na rpi ( prebacis ovo hello), al ne radi zbog deljenih biblioteka.
+  - onda na kompu pogledas koje su to deljene biblioteke koje ti trebaj:
+  readelf -a hello| grep "Shared library" 
+  - i prebacis kopiras deljene biblioteke gde treba: _install/lib/    
+  
+  
+  
 ### 2.5 Initramfs
 *Potrebni alati:* `libqt4-dev`
 
