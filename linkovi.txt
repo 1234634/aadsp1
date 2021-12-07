@@ -1,0 +1,7 @@
+NUNCHUK (V10, v11.1):  https://github.com/PavleMicovic/test/blob/master/nunchuk.c
+
+Neke linije za v11.2: https://git.davidshewitt.com/linux-colonel/linux-kernel-labs/blob/79a28f71685669cdd6b9b1f1d1e6c11a64e38b46/nunchuk/nunchuk.c
+
+Beleska BusyBox: https://github.com/PavleMicovic/test/blob/master/aadsp/busy/applet_beleska.txt
+
+aadsp; https://github.com/PavleMicovic/test/tree/master/aadsp
