@@ -52,3 +52,19 @@ Applet прима три параметра. Први параметар је у
 при покретању аpletа на исправан начин (у стилу busybox-а).
 Послати слику која показује све измењене датотеке у процесу 
 додавања аплета, као и датотеку са кодом аплета.
+
+
+
+	The command to build an external module is:
+
+		$ make -C <path_to_kernel_src> M=$PWD
+
+	The kbuild system knows that an external module is being built
+	due to the "M=<dir>" option given in the command.
+
+	To build against the running kernel use:
+
+		$ make -C /lib/modules/`uname -r`/build M=$PWD
+
+
+
