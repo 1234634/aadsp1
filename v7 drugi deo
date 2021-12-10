@@ -1,0 +1,71 @@
+#include<linux/init.h>
+#include<linux/module.h>
+#include <linux/kernel.h>
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/i2c.h>
+#include <linux/slab.h>
+#include <linux/gfp.h>
+
+dev_t acme_dev;
+static struct cdev acme_cdev;
+#define CHAR_DEV_NAME "acme"
+static void *acme_buf;
+static int acme_bufsize=8192;
+
+
+
+static ssize_t acme_read(struct file *file, char __user *buf, size_t count, loff_t *offset){
+
+printk("MYCHARDEV: Device read\n");
+return 0;}
+static struct file_operations acme_fops =
+{
+ .owner = THIS_MODULE,
+ .read = acme_read,
+};
+
+
+
+
+
+static int __init hello_init(void) {
+
+	unsigned acme_count = 1;
+
+	int err;
+acme_buf = kcalloc(acme_bufsize, 1, GFP_KERNEL);
+ if (!acme_buf) {
+ err = -ENOMEM;
+ 
+ }
+
+	alloc_chrdev_region(&acme_dev, 0, acme_count, CHAR_DEV_NAME);
+//	cdev_init(&acme_cdev, &acme_fops);
+
+
+	 //{
+ 	
+		//pr_err(“Failed to allocate device number\n”);
+	
+	//}
+	
+	cdev_init(&acme_cdev, &acme_fops);
+	cdev_add(&acme_cdev, acme_dev, acme_count);	
+
+	pr_alert("Major-Minor: %d - %d\n", MAJOR(acme_dev), MINOR(acme_dev));
+
+	return 0;
+}
+
+
+static void __exit hello_exit(void) {
+}
+
+
+
+module_init(hello_init);
+module_exit(hello_exit);
+//MODULE_LICENSE("GPL");
+//MODULE_DESCRIPTION("Hello description");
+//MODULE_AUTHOR("William Shakespeare");
