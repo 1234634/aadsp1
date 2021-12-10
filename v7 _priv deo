@@ -1,0 +1,48 @@
+
+sudo cat /proc/kmsg
+
+
+
+!!!!!!!!!!!!1 EXPORTI OBAVEZNO tu GDE MAKE RADIS ZA MODULE!!!!!!!!!!!!!!!!!!!
+ KOD:
+ ----------------------------------------------------------------------------------------------------------------------------------------------
+
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/utsname.h>
+#include<linux/time.h>
+
+static char *whom = "world";
+module_param(whom, charp, 0);
+
+//do_gettimeofdan
+// extern void do_gettimeofday(struct timeval *tv);
+struct timeval tv_start;
+struct timeval tv_end;
+
+
+
+static int __init hello_init(void) {
+
+	pr_alert("Hello %s. You are currently using Linux %s",whom, utsname()->release);
+ 	
+	do_gettimeofday(&tv_start);
+	return 0;
+}
+
+
+static void __exit hello_exit(void) {
+	pr_alert( "Hello version exit");
+
+	do_gettimeofday(&tv_end);
+	printk(KERN_INFO"\ntiime taken: %ld,", tv_end.tv_sec - tv_start.tv_sec);
+}
+
+
+
+module_init(hello_init);
+module_exit(hello_exit);
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Hello description");
+MODULE_AUTHOR("William Shakespeare");
