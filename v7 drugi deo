@@ -69,3 +69,14 @@ module_exit(hello_exit);
 //MODULE_LICENSE("GPL");
 //MODULE_DESCRIPTION("Hello description");
 //MODULE_AUTHOR("William Shakespeare");
+
+
+
+
+
+‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚‚
+POstavljanje hello version ya modul
+
+menja se u drivesr/misc
+Makefile 
+Kconfig
