@@ -1,0 +1,365 @@
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/of.h>
+#include <linux/of_irq.h>
+#include <linux/platform_device.h>
+#include <linux/io.h>
+#include <linux/pm_runtime.h>
+#include <linux/fs.h>
+#include <linux/miscdevice.h>
+#include <linux/slab.h>
+#include <linux/uaccess.h>
+#include <linux/interrupt.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include<linux/miscdevice.h>
+#include<linux/amba/serial.h>
+#include<linux/amba/serial.h>
+/* Add your code here */
+
+#define BAUDRATE 115200
+#define SERIAL_RESET_COUNTER 0
+#define SERIAL_GET_COUNTER 1
+
+struct uart_dev {
+    void __iomem   *regs;               /* Virtual address where the physical GPIO address is mapped */
+    struct miscdevice miscdev;  
+    unsigned freq;
+    long counter;
+    char * uartBuffer;
+    int buf_len;
+    wait_queue_head_t waitQ;
+    int irq;
+    spinlock_t lock;
+    unsigned long irqFlags;
+};
+
+
+static unsigned int reg_read(struct uart_dev *dev, int offset)
+{
+       unsigned int ret;
+	spin_lock_irqsave(&dev->lock, dev->irqFlags); 
+        ret = readl(dev->regs + offset);
+	spin_unlock_irqrestore(&dev->lock, dev->irqFlags); 
+	
+	return ret;
+}
+
+
+static void reg_write(struct uart_dev *dev, int value, int offset)
+{
+	spin_lock_irqsave(&dev->lock, dev->irqFlags); 
+        writel(value, dev->regs + offset);
+	spin_unlock_irqrestore(&dev->lock, dev->irqFlags); 
+}
+
+
+
+static void write_char( struct uart_dev *dev, char c)
+{
+
+	unsigned txfe,regValue;
+	regValue = reg_read(dev,UART01x_FR);
+	//transmit fifo enabled 
+	txfe = regValue & (1 << 7) ;
+
+	while (!txfe)
+	{
+		regValue = reg_read(dev,UART01x_FR);
+		txfe = regValue & (1 << 7) ;
+
+    		cpu_relax();
+	}
+	
+
+	regValue = reg_read(dev,UART01x_DR);
+	reg_write(dev,regValue | c, UART01x_DR); 
+//	printk(KERN_INFO "DR %x\n",regValue );
+
+
+//	regValue = reg_read(dev,UART01x_DR);
+//	printk(KERN_INFO "DR %x\n",regValue );
+}
+
+
+static long uart_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+
+    struct uart_dev* my_uart;
+     unsigned int *val;
+     val = (int * )arg;
+    
+    my_uart = container_of(file->private_data,struct uart_dev,miscdev);
+
+	if( cmd == SERIAL_RESET_COUNTER)
+	{
+		my_uart -> counter =0;
+	}
+
+	if(cmd == SERIAL_GET_COUNTER)
+	{
+		*val = my_uart -> counter;
+	}
+
+		return 0;
+}
+
+
+
+static irqreturn_t irqHandler(int irq, void *d)
+{
+  //  struct uart_dev *my_uart = dev_id;
+  /*      char recv = reg_read(dev, UART01x_DR);
+	my_uart-> uartBuffer[0] = recv;
+	my_uart-> buf_len = 1;     
+	wake_up(&dev->waitQ);
+  */	
+    printk(KERN_INFO "Desio se irq\n");
+   
+    return IRQ_HANDLED;
+}
+
+
+
+static ssize_t uart_read(struct file *file, char __user *buf,
+                             size_t sz, loff_t *ppos)
+{
+    struct uart_dev* my_uart;
+    
+    my_uart = container_of(file->private_data,struct uart_dev,miscdev);
+
+    DEFINE_WAIT(wait);
+	prepare_to_wait(&my_uart->waitQ,&wait, TASK_UNINTERRUPTIBLE);	
+    if(my_uart-> buf_len > 0  )
+    {
+	 schedule();
+	}
+    finish_wait(&my_uart-> waitQ, &wait);
+
+    copy_to_user(buf,my_uart->uartBuffer, 1);
+
+	return 1;
+}
+
+static ssize_t uart_write(struct file *file, const char __user *user_buffer,
+                             size_t size, loff_t * offset)
+{
+    
+    ssize_t len ;
+    int i =0;
+    char textBuffer[size+1];
+
+
+    struct uart_dev* my_uart;
+
+    
+    my_uart = container_of(file->private_data,struct uart_dev,miscdev);
+
+   // textBuffer = kmalloc(sizeof (*textBuffer * 200),GFP_ATOMIC);
+    
+
+   /* len= min(sizeof(textBuffer) - *offset, size);
+    if (len <= 0)
+         return 0;*/
+
+    /* read data from user buffer to my_data->buffer */
+    if (copy_from_user(textBuffer, user_buffer, size))
+        return -EFAULT;
+
+    *offset += len;
+	
+	for ( i =0; i< size; i++)
+	{
+		if(textBuffer[i] == '\n')
+		{	
+			write_char(my_uart,'\n');
+			write_char(my_uart,'\r');
+		}
+		else
+		{
+			write_char(my_uart,textBuffer[i]);
+
+		}
+
+	}
+
+	my_uart-> counter += size;
+
+    return size;
+
+
+
+}
+
+
+static const struct file_operations uart_fops = {
+        .owner = THIS_MODULE,
+        .write = uart_write,
+        .read = uart_read,
+	.unlocked_ioctl = uart_ioctl,
+};
+
+static int feserial_probe(struct platform_device *pdev)
+{
+	struct uart_dev * my_uart;
+	struct device_node *clk_node;
+	struct resource *res;
+	unsigned baud_divisor;
+	unsigned int old_value, print_value;
+	int result;
+	printk(KERN_INFO"Called feserial_probe\n");
+	
+	 my_uart = devm_kzalloc(&pdev->dev,sizeof(*my_uart),GFP_KERNEL);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+
+        if(res == NULL)
+        {
+                printk(KERN_INFO "feserial:resource cannot be obtained\n");
+        }
+
+        printk(KERN_INFO "Feserial Base address is %d \n", res->start );
+
+	 my_uart->regs = devm_ioremap_resource(&pdev->dev, res);
+        if (!(my_uart->regs)) {
+                dev_err(&pdev->dev, "Cannot remap registers\n");
+                return -ENOMEM;
+        }
+	my_uart->counter = 0;
+	//power management
+	pm_runtime_enable(&pdev->dev);
+        pm_runtime_get_sync(&pdev->dev);
+	
+	//printk(KERN_INFO "Feserial Virtual Base address is %x \n", ioread32(my_uart->regs) );
+
+	
+        my_uart-> uartBuffer = kmalloc(sizeof (*my_uart-> uartBuffer * 200),GFP_ATOMIC);
+       my_uart-> buf_len = 0;
+
+
+	//irq initalisation 
+	init_waitqueue_head(&(my_uart->waitQ));	
+	my_uart->irq = platform_get_irq(pdev,0);
+
+	//enablovanje  interrupta na receive liniji  
+	old_value = reg_read(my_uart,UART011_IMSC);
+	reg_write(my_uart,old_value | UART011_RXIM,UART011_IMSC);
+
+	devm_request_irq(&pdev->dev, my_uart->irq, irqHandler, 0, dev_name(&pdev->dev), my_uart);
+
+
+
+
+
+
+	clk_node = of_parse_phandle(pdev->dev.of_node, "clocks", 0);
+	if (!clk_node) {
+		dev_err(&pdev->dev, "Cannot get clk node\n");
+		return -EBUSY;
+	}
+
+	of_property_read_u32(clk_node,"clock frequency", &my_uart->freq);
+	//of_property_read_u32(pdev->dev.of_node,"clock frequency", &my_uart->freq);
+	printk(KERN_INFO "freq vam je %d\n", my_uart->freq);
+	
+
+	 //baud 115200
+
+//	baud_divisor = my_uart->freq/16/BAUDRATE;
+	baud_divisor = 250*1000*1000/16/BAUDRATE;
+
+	printk(KERN_INFO "baud_divisor je  %d\n", baud_divisor);
+	printk(KERN_INFO "baud_divisor siftovan   %d\n", (baud_divisor >> 8 ));
+	//gasenje uarta 
+	printk(KERN_INFO "Gasenje uarta " );
+	old_value = reg_read(my_uart,UART011_CR);
+	
+	print_value = reg_read(my_uart,UART011_CR);
+	printk(KERN_INFO "CR  hex: 0x%x\n",print_value );
+	
+	reg_write(my_uart, old_value & 0xfffe,UART011_CR);
+	
+	print_value = reg_read(my_uart,UART011_CR);
+	printk(KERN_INFO "CR hex: 0x%x\n",print_value );
+	
+	//writing baudrate 
+	reg_write(my_uart, baud_divisor & 0xffff,UART011_IBRD);
+	reg_write(my_uart, (baud_divisor >> 8) & 0xff,UART011_FBRD);
+	print_value = reg_read(my_uart,UART011_IBRD);
+	printk(KERN_INFO "IBRD hex: 0x%x\n",print_value );
+
+	//fifo enable 
+	old_value = reg_read(my_uart,UART011_LCRH);
+	reg_write(my_uart,old_value | (1 << 4), UART011_LCRH); 
+	
+	//rx i tx enablovanje 
+	old_value = reg_read(my_uart,UART011_CR);
+	reg_write(my_uart, old_value | UART011_CR_TXE | UART011_CR_RXE, UART011_CR );
+	
+	//palim uart	
+	old_value = reg_read(my_uart,UART011_CR);
+	reg_write(my_uart, old_value | UART01x_CR_UARTEN, UART011_CR );
+
+	
+	write_char(my_uart, 'd'); 	
+	
+	//misc dev registration 
+
+	platform_set_drvdata(pdev,my_uart);
+        my_uart->miscdev.minor = MISC_DYNAMIC_MINOR;
+      // my_uart->miscdev.name= devm_kasprintf(&pdev->dev,GFP_KERNEL, "uart-%x", res->start);
+       my_uart->miscdev.name= devm_kasprintf(&pdev->dev,GFP_KERNEL, "uart");
+        my_uart->miscdev.fops = &uart_fops;
+        my_uart->miscdev.parent = NULL;
+
+        result = misc_register(&my_uart->miscdev);
+         if (result < 0) {
+
+                dev_err(&pdev->dev, "Failed to register miscdev\n");
+
+                return result;
+
+         }
+
+
+         dev_info(&pdev->dev, "Registered\n");
+
+
+
+	return 0;
+}
+
+static int feserial_remove(struct platform_device *pdev)
+{
+
+	struct uart_dev * my_uart = platform_get_drvdata(pdev);
+	pr_info("Called feserial_remove\n");
+
+	if((*my_uart).regs)
+	{
+		iounmap((*my_uart).regs);
+	
+	}
+
+	misc_deregister( &(my_uart->miscdev));
+	pm_runtime_disable(&pdev->dev);
+        return 0;
+}
+
+static struct of_device_id feserial_dt_match[] = {
+        { .compatible = "rtrk,serial" },
+        { },
+};
+
+static struct platform_driver feserial_driver = {
+        .driver = {
+                .name = "uart",
+                .owner = THIS_MODULE,
+      		.of_match_table = of_match_ptr(feserial_dt_match),
+	 },
+        .probe = feserial_probe,
+        .remove = feserial_remove,
+};
+
+module_platform_driver(feserial_driver);
+MODULE_LICENSE("GPL");
