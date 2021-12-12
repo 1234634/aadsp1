@@ -1,0 +1,53 @@
+INPUT_POLLDEV
+INPUT_EVDEV
+I2C
+
+make bcm2709_defconfig
+make xconfig
+
+
+dodaj ime :
+ local version
+
+sudo vmount Shared Shared
+sudo mount -t vboxsf
+
+cat/proc/device-tree/soc/i2c@7e804000/nunchuk@52/status
+
+Lokacija za dts:
+~/linux-kernel-labs/src/linux/arch/arm/boot/dts
+
+find /proc/device-tree/ -name ”* nunchuk *” 
+
+
+sudo    chown -R    rtrk.rtrk <putanjadonfsrootdirektorijuma>/lib/
+ make modules_installINSTALL_MOD_PATH=<putanjadonfsrootdirektorijuma>
+sudo    chown -R    root.root<putanjadonfsrootdirektorijuma>/lib/ 
+nalazi se na L10 strana 6
+i2cdetect -
+
+
+cat /proc/device-tree/soc/i2c@7e804000/nunchuk@52/status
+
+input_event(polled_input->input, EV_ABS, ABS_X, joyx);
+    input_event(polled_input->input, EV_ABS, ABS_Y, joyy);
+linije
+
+
+sudo tar xvjf rootfs.tar.bz2 -C nfsroot/
+
+patching file arch/arm/configs/zadatak2_defconfig
+
+Modules sta treba:
+
+enable loadable module support
+    forced module loading
+    module unloading
+        forced module unloading 
+
+
+do_gettimeofday(&times);
+pr_alert("It took you: %lu seconds to close Hello\n", timee.tv_sec - times.tv_sec);
+
+FILE *out = fopen_or_warn(argv[1], "w");
+strcpy(argv[1], filename);
