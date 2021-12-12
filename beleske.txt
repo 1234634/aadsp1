@@ -66,5 +66,7 @@ Applet прима три параметра. Први параметар је у
 
 		$ make -C /lib/modules/`uname -r`/build M=$PWD
 
+	rotate se moze echovati u ovaj class/graphics/fbcon/rotate
+ili da se odma pre bootovanja dodaje u bootargs = fbcon=rotate:2
 
 
