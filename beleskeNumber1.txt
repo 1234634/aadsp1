@@ -1,0 +1,33 @@
+P2. poslednje strane imaju o U-BOOT koriscenje, varijable izmene 
+
+P4.1 ima malo o /proc
+
+P4.2 za L4 , str 44. brze prevodjenje, saveti za prevodjenje kernela 46.
+	mknod
+
+P5.u MAKEFILE izmene za cross compile
+ARCH ?= arm
+CROSS_COMPILE ?= arm-linux
+
+
+arch/arm/boot/zImage
+
+po potrebi ako je verzija kernela u nfsrootVezba starija od one koju koristimo (mislim da je verzija na branchu rpi-4.4.y)
+i onda ako je u tamo nfsrootVezba/lib/modules/4.4... onda je valjda
+!! 4.4.50-v7+ je verzija valjda . 
+ovo moze da radi samo kad je prethodono odradjen make
+make modules_install INSTALL_MOD_PATH=<dir>/
+
+Documentation/devices.txt
+
+
+rotate se moze echovati u ovaj class/graphics/fbcon/rotate
+ili da se odma pre bootovanja dodaje u bootargs = fbcon=rotate:2
+
+dmesg | tail -1
+
+
+yaboravi se crtica pa ti ne radi gnueabihf- kod eksporta.
+
+L6. mora da se radi preko menu configa al sa dovoljno velikim terminalom.
+i tu ce biti neki path u build i tu pises ovaj _install kad odradis make install.
